@@ -7,7 +7,7 @@ For additional information, please refer to our blog posts:
 - [DDSpoof - Spoofing DNS Records By Abusing DHCP DNS Dynamic Updates](https://www.akamai.com/blog/security-research/spoofing-dns-by-abusing-dhcp)
 - [Weaponizing DHCP DNS Spoofing - a Hands-On Guide](https://www.akamai.com/blog/security-research/hands-on-guide-weaponizing-dhcp-to-spoof-dns)
 
-For information on how to mitigate DDSpoofing attacks in your networks, please refer to Invoke-DHCPCheckup.ps1
+For information on how to mitigate DDSpoofing attacks in your networks, please refer to [Invoke-DHCPCheckup.ps1](https://github.com/akamai/Invoke-DHCPCheckup)
 
 -------
 # Setup
