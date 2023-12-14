@@ -1,0 +1,4 @@
+click==8.1.7
+click-shell==2.1
+dnspython==2.3.0
+scapy==2.5.0
