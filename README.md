@@ -116,7 +116,7 @@ save-config <path>
 ```
 -------
 
-# Manual DHCP DNS commands
+# DHCP DNS commands
 
 ## write-record
 
