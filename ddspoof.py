@@ -23,10 +23,11 @@ from spoofer_config import SpooferConfig
 
 
 class DDSpoof:
-    def __init__(self, verbose: bool):
+    def __init__(self, verbose: bool, enum_name_protection: bool):
         self._dhcp_sniffer: Optional[DHCPSniffer] = None
         self._llmnr_sniffer: Optional[LLMNRSniffer] = None
         self._verbose = verbose
+        self._enum_name_protection = enum_name_protection
 
     def load_config_from_file(self, config_file_path: str) -> bool:
         """
@@ -166,24 +167,35 @@ class DDSpoof:
         :return:
         """
 
-        name_protection_status = test_server_name_protection_status(
-            self._dhcp_client,
-            self._client_id,
-            self._max_retry,
-            dhcp_server,
-            self._verbose,
-        )
-        if name_protection_status == True:
-            dhcp_server.name_protection_status = True
-            click.echo(f"[*] Name protection is enabled on {dhcp_server.ip_address}")
-        elif name_protection_status == False:
-            dhcp_server.name_protection_status = False
-            click.echo(f"[*] Name protection is disabled on {dhcp_server.ip_address}")
+        if self._enum_name_protection:
+            name_protection_status = test_server_name_protection_status(
+                self._dhcp_client,
+                self._client_id,
+                self._max_retry,
+                dhcp_server,
+                self._verbose,
+            )
+            if name_protection_status == True:
+                dhcp_server.name_protection_status = True
+                click.echo(f"[*] Name protection is enabled on {dhcp_server.ip_address}")
+            elif name_protection_status == False:
+                dhcp_server.name_protection_status = False
+                click.echo(f"[*] Name protection is disabled on {dhcp_server.ip_address}")
+            else:
+                dhcp_server.name_protection_status = None
+                click.echo(
+                    f"[*] Name protection status unknown on {dhcp_server.ip_address}"
+                )
         else:
             dhcp_server.name_protection_status = None
             click.echo(
-                f"[*] Name protection status unknown on {dhcp_server.ip_address}"
+                f"[*] Skipped checking Name protection status on {dhcp_server.ip_address}"
             )
+            click.echo(
+                f"[*] Use the '-np' flag to test Name Protection status"
+            )
+
+
 
     def _set_target_server(self, target_server: str):
         """
@@ -489,7 +501,7 @@ def prompt_gen(ctx):
 
 @shell(prompt=prompt_gen)
 @click.pass_context
-@click.option("-iface", required=True, help="Name of the interface to use")
+@click.option("--iface", "-i", required=True, help="Name of the interface to use")
 @click.option(
     "-retry",
     type=int,
@@ -497,14 +509,15 @@ def prompt_gen(ctx):
     help="Set the max retry amount for the various functions used by the tool",
 )
 @click.option(
-    "-config-file",
+    "--config-file",
     type=str,
     default="",
     help="Path to a DDSpoof config file to load configuration from",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Display verbose output")
-def shell_init(ctx, iface: str, retry: int, config_file: str, verbose: bool):
-    spoofer = DDSpoof(verbose)
+@click.option("--enum-name-protection", "-np", is_flag=True, help="Test server name protection status. Note: This option will cause DDSpoof to create DNS records on the server")
+def shell_init(ctx, iface: str, retry: int, config_file: str, verbose: bool, enum_name_protection: bool):
+    spoofer = DDSpoof(verbose, enum_name_protection)
 
     if config_file:
         config_initialized = spoofer.load_config_from_file(config_file)
