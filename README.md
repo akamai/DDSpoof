@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ```
 - Run DDSpoof while specifying the network interface to use:
 ```
-ddspoof.py -iface "eth0" -v
+ddspoof.py --iface "eth0"
 ```
 -------
 # Usage
@@ -30,12 +30,16 @@ Commandline arguments:
 Usage: ddspoof.py [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  -iface TEXT        Name of the interface to use  [required]
-  -retry INTEGER     Set the max retry amount for the various functions used
-                     by the tool
-  -config-file TEXT  Path to a DDSpoof config file to load configuration from
-  -v, --verbose      Display verbose output
-  --help             Show this message and exit.
+  -i, --iface TEXT             Name of the interface to use  [required]
+  -retry INTEGER               Set the max retry amount for the various
+                               functions used by the tool
+  --config-file TEXT           Path to a DDSpoof config file to load
+                               configuration from
+  -v, --verbose                Display verbose output
+  -np, --enum-name-protection  Test server name protection status. Note:
+                               This option will cause DDSpoof to create DNS records on
+                               the server
+  --help                       Show this message and exit.
 ```
 
 At startup, DDSpoof will perform the following:
@@ -128,15 +132,15 @@ Attempt to create or modify a DNS record with a specified FQDN.
 
 **Usage:**
 
-Create a record by specifying only a hostname, domain name would be added automatically:
+Create a record for the specified FQDN:
 
 ```
-write-record <hostname>
+write-record <fqdn>
 ```
 
-Create a record with a specific IP addres, overwriting the configuration:
+Create a record with a specific IP address, overwriting the configuration:
 ```
-write-record <hostname> <ip_address>
+write-record <fqdn> <ip_address>
 ```
 
 ## delete-record
@@ -149,9 +153,9 @@ Attempt to delete a DNS record with a specified FQDN. This can be used to delete
 
 **Usage:**
 
-Attempt to delete a record by specifying only a hostname, domain name would be added automatically:
+Attempt to delete a record with a specified FQDN
 ```
-delete-record <hostname>
+delete-record <fqdn>
 ```
 
 ## test-ip
