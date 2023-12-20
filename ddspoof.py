@@ -503,7 +503,7 @@ def prompt_gen(ctx):
 @click.pass_context
 @click.option("--iface", "-i", required=True, help="Name of the interface to use")
 @click.option(
-    "-retry",
+    "--retry", "-r",
     type=int,
     default=5,
     help="Set the max retry amount for the various functions used by the tool",
