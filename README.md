@@ -31,14 +31,14 @@ Usage: ddspoof.py [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -i, --iface TEXT             Name of the interface to use  [required]
-  -retry INTEGER               Set the max retry amount for the various
+  -r, --retry INTEGER          Set the max retry amount for the various
                                functions used by the tool
   --config-file TEXT           Path to a DDSpoof config file to load
                                configuration from
   -v, --verbose                Display verbose output
-  -np, --enum-name-protection  Test server name protection status. Note:
-                               This option will cause DDSpoof to create DNS records on
-                               the server
+  -np, --enum-name-protection  Test server name protection status. Note: This
+                               option will cause DDSpoof to create DNS records
+                               on the server
   --help                       Show this message and exit.
 ```
 
