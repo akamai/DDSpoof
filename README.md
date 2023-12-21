@@ -5,7 +5,7 @@ DDSpoof is a tool that enables DHCP DNS Dynamic Update attacks against Microsoft
 For additional information, please refer to our blog posts:
 
 - [DDSpoof - Spoofing DNS Records By Abusing DHCP DNS Dynamic Updates](https://www.akamai.com/blog/security-research/spoofing-dns-by-abusing-dhcp)
-- [Weaponizing DHCP DNS Spoofing - a Hands-On Guide](https://www.akamai.com/blog/security-research/hands-on-guide-weaponizing-dhcp-to-spoof-dns)
+- [Weaponizing DHCP DNS Spoofing - a Hands-On Guide](https://www.akamai.com/blog/security-research/weaponizing-dhcp-dns-spoofing-hands-on-guide)
 
 For information on how to mitigate DDSpoofing attacks in your networks, please refer to [Invoke-DHCPCheckup.ps1](https://github.com/akamai/Invoke-DHCPCheckup)
 
