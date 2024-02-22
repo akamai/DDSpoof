@@ -6,6 +6,7 @@ For additional information, please refer to our blog posts:
 
 - [DDSpoof - Spoofing DNS Records By Abusing DHCP DNS Dynamic Updates](https://www.akamai.com/blog/security-research/spoofing-dns-by-abusing-dhcp)
 - [Weaponizing DHCP DNS Spoofing - a Hands-On Guide](https://www.akamai.com/blog/security-research/weaponizing-dhcp-dns-spoofing-hands-on-guide)
+- [Abusing the DHCP Administrators Group to Escalate Privileges in Windows Domains](https://akamai.com/blog/security-research/abusing-dhcp-administrators-group-for-privilege-escalation-in-windows-domains)
 
 For information on how to mitigate DDSpoofing attacks in your networks, please refer to [Invoke-DHCPCheckup.ps1](https://github.com/akamai/Invoke-DHCPCheckup)
 
@@ -203,6 +204,32 @@ start-dhcp
 
 -------
 
+# dhcp_coerce.py
+Abuse the DNS Server Option to coerce Microsoft DHCP server authentication.
+For more information about this technique please refer to our blog:
+
+[Abusing the DHCP Administrators Group to Escalate Privileges in Windows Domains](https://akamai.com/blog/security-research/abusing-dhcp-administrators-group-for-privilege-escalation-in-windows-domains)
+## Usage
+```
+usage: dhcp_coerce.py [-h] -i IFACE -d DOMAIN_NAME -s TARGET_SERVER -c COERCE_IP -ip RELAY_IP
+
+options:
+  -h, --help            show this help message and exit
+  -i IFACE, --iface IFACE
+                        The name of the interface to use when sending packets
+  -d DOMAIN_NAME, --domain-name DOMAIN_NAME
+                        The FQDN of the domain we are targeting
+  -s TARGET_SERVER, --target-server TARGET_SERVER
+                        The IP address of the target DHCP server
+  -c COERCE_IP, --coerce-ip COERCE_IP
+                        An IP address that is part of the DHCP coercion scope we previously created on the target
+                        server
+  -ip RELAY_IP, --relay-ip RELAY_IP
+                        The IP address of our machine. This address needs to be part of an existing scope on the
+                        target server
+```
+
+-------
 # License 
 
 Copyright 2023 Akamai Technologies Inc.

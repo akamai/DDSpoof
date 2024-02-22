@@ -8,6 +8,7 @@ from scapy.all import BOOTP, DHCP, IP, UDP, Ether, Packet, get_if_hwaddr, sendp
 
 from networking.dhcp_server import DHCPServer
 from networking.scapy_utils import send_recv_with_filter
+from utils.utils import ip_to_bytes
 
 DHCP_TYPE_DISCOVER = "discover"
 DHCP_TYPE_OFFER = "offer"
@@ -31,6 +32,7 @@ DHCP_OPTION_SERVER_IDENTIFIER = "server_id"
 DHCP_OPTION_PARAM_REQUEST_LIST = "param_req_list"
 DHCP_OPTION_END = "end"
 DHCP_OPTION_CLIENT_FQDN = "client_FQDN"
+DHCP_OPTION_RELAY_AGENT_INFO = "relay_agent_information"
 DHCP_OPTIONS = {DHCP_OPTION_NAME_SERVER: 6, DHCP_OPTION_DOMAIN: 15}
 
 # These filters assume that the DHCP message_type option is going to
@@ -39,13 +41,19 @@ DHCP_OPTIONS = {DHCP_OPTION_NAME_SERVER: 6, DHCP_OPTION_DOMAIN: 15}
 DHCP_OFFER_FILTER = "udp and port 68 and (udp[247:4] = 0x63350102)"
 DHCP_ACK_FILTER = "udp and port 68 and (udp[247:4] = 0x63350105)"
 
+DHCP_OFFER_FILTER_RELAY = "udp and port 67 and (udp[247:4] = 0x63350102)"
+DHCP_ACK_FILTER_RELAY = "udp and port 67 and (udp[247:4] = 0x63350105)"
+
 PACKET_SNIFF_TIMEOUT = 3
 
 
 class DHCPClient:
-    def __init__(self, iface: str, verbose: bool):
+    def __init__(self, iface: str, verbose: bool, server_ip: str = None):
         self._iface = iface
-        self._packet_base = self.get_base_dhcp_packet(get_if_hwaddr(iface))
+        if not server_ip:
+            self._packet_base = self.get_broadcast_dhcp_packet(get_if_hwaddr(iface))
+        else:
+            self._packet_base = self.get_unicast_dhcp_packet(get_if_hwaddr(iface), server_ip)
         self._verbose = verbose
 
     def send_release(self, client_id: str, release_addr: str, dhcp_server: str = ""):
@@ -75,6 +83,7 @@ class DHCPClient:
         dhcp_server: str = "",
         max_retry: int = 5,
         fqdn_server_flag: bool = True,
+        relay_address: str = ""
     ) -> Optional[str]:
         """
         Perform a DHCP DORA with a specified FQDN to invoke a DHCP DNS Dynamic Update.
@@ -84,19 +93,20 @@ class DHCPClient:
         :param dhcp_server: Optional. The specific DHCP server address to target. Without it, a broadcast is sent
         and the first server to reply would be used.
         :param max_retry: Maximum amount of retries to the DORA process.
+        :param relay_address: ip address of the relay agent to use.
         :return: Return the IP address that was leased to the client, or None if the lease failed
         """
 
-        bootp = self._initialize_bootp_layer("0.0.0.0", client_id)
+        bootp = self._initialize_bootp_layer("0.0.0.0", client_id, relay_address)
 
         dhcp_discover_options = self._initialize_dhcp_discover_options(
-            dhcp_server=dhcp_server, requested_ip=requested_ip
+            dhcp_server=dhcp_server, requested_ip=requested_ip, relay_address=relay_address
         )
         dhcp_discover = DHCP(options=dhcp_discover_options)
         discover_packet = self._packet_base / bootp / dhcp_discover
 
         offer_packet = self._send_recv_dhcp(
-            discover_packet, DHCP_OFFER_FILTER, DHCP_TYPE_OFFER, max_retry
+            discover_packet, DHCP_OFFER_FILTER_RELAY if relay_address else DHCP_OFFER_FILTER, DHCP_TYPE_OFFER, max_retry
         )
 
         if offer_packet:
@@ -107,13 +117,14 @@ class DHCPClient:
             if offer_addr:
 
                 dhcp_request_options = self._initialize_dhcp_request_options(
-                    offer_addr, dhcp_server, fqdn, fqdn_server_flag
+                    requested_addr=offer_addr, dhcp_server=dhcp_server, fqdn=fqdn, fqdn_server_flag=fqdn_server_flag,
+                    relay_address=relay_address
                 )
                 dhcp_request = DHCP(options=dhcp_request_options)
                 request_packet = self._packet_base / bootp / dhcp_request
 
                 ack_packet = self._send_recv_dhcp(
-                    request_packet, DHCP_ACK_FILTER, DHCP_TYPE_ACK, max_retry
+                    request_packet, DHCP_ACK_FILTER_RELAY if relay_address else DHCP_ACK_FILTER, DHCP_TYPE_ACK, max_retry
                 )
 
                 if not ack_packet:
@@ -123,31 +134,43 @@ class DHCPClient:
                         )
                 return offer_addr
 
-    def _initialize_bootp_layer(self, client_address: str, client_id: str):
+    def _initialize_bootp_layer(self, client_address: str, client_id: str, relay_address: str = ""):
         """
         initialize a scapy BOOTP layer for our packets
         :param client_address: IP address of the client
         :param client_id: MAC address of the client
+        :param relay_address: ip address of the relay agent to use.
         :return: BOOTP object with the specified data
         """
-        return BOOTP(
-            op=1,
-            chaddr=binascii.unhexlify(client_id),
-            ciaddr=client_address,
-            xid=random.randint(0, 9999),
-        )
+        if relay_address:
+            return BOOTP(
+                op=1,
+                chaddr=binascii.unhexlify(client_id),
+                ciaddr=client_address,
+                xid=random.randint(0, 9999),
+                giaddr=relay_address,
+            )
+        else:
+            return BOOTP(
+                op=1,
+                chaddr=binascii.unhexlify(client_id),
+                ciaddr=client_address,
+                xid=random.randint(0, 9999),
+            )
 
     def _initialize_dhcp_discover_options(
         self,
         dhcp_server: str = "",
         requested_ip: str = "",
         param_req_list: List[str] = [],
+        relay_address: str = ""
     ) -> List:
         """
         Initialize the DHCP options for a Discover packet
         :param dhcp_server: IP address of the target server, would be used in the "server_id" option
         :param requested_ip: Requested IP address, would be used in the "requested_ip" option
         :param param_req_list: List of params to request from the DHCP server, would be used in the "param_req_list" option
+        :param relay_address: ip address of the relay agent to use.
         :return: List containing DHCP options in the expected format for scapy
         """
         dhcp_options = [
@@ -168,6 +191,11 @@ class DHCPClient:
                     [DHCP_OPTIONS[param] for param in param_req_list],
                 )
             )
+        if relay_address:
+            # 0x05 is sub-option 5, 0x04 is length of the data - 4 bytes representing an IP address
+            option82 = b"\x05\x04" + ip_to_bytes(requested_ip)
+            dhcp_options.append((DHCP_OPTION_RELAY_AGENT_INFO, option82))
+
         dhcp_options.append((DHCP_OPTION_END))
 
         return dhcp_options
@@ -178,6 +206,7 @@ class DHCPClient:
         dhcp_server: str = "",
         fqdn: str = "",
         fqdn_server_flag: bool = True,
+        relay_address: str = "",
     ) -> List:
         """
         Initialize the DHCP options for a Request packet
@@ -185,6 +214,7 @@ class DHCPClient:
         :param dhcp_server: IP address of the target server, would be used in the "server_id" option
         :param fqdn: FQDN of the client, would be used in the "Client_FQDN" option.
         :param fqdn_server_flag: set the server flag in the FQDN option to True or False.
+        :param relay_address: ip address of the relay agent to use.
         :return: List containing DHCP options in the expected format for scapy
         """
         dhcp_options = [
@@ -204,6 +234,11 @@ class DHCPClient:
                     fqdn_flags + bytes(fqdn, "utf-8"),
                 )
             )
+        if relay_address:
+            # 0x05 is sub-option 5, 0x04 is length of the data - 4 bytes representing an IP address
+            option82 = b"\x05\x04" + ip_to_bytes(requested_addr)
+            dhcp_options.append((DHCP_OPTION_RELAY_AGENT_INFO, option82))
+
         dhcp_options.append((DHCP_OPTION_END))
 
         return dhcp_options
@@ -342,14 +377,27 @@ class DHCPClient:
         sendp(request_packet, self._iface, verbose=False)
 
     @staticmethod
-    def get_base_dhcp_packet(src_mac: str) -> Packet:
+    def get_broadcast_dhcp_packet(src_mac: str) -> Packet:
         """
-        create a the basic layers for a DHCP packet
+        create the basic layers for a DHCP packet
         :param src_mac: the source MAC address to send the packet with
         :return: DHCP Packet with ethernet, IP and UDP layers
         """
         eth = Ether(dst="ff:ff:ff:ff:ff:ff", src=src_mac)
         ip = IP(src="0.0.0.0", dst="255.255.255.255")
+        udp = UDP(sport=68, dport=67)
+
+        return eth / ip / udp
+
+    @staticmethod
+    def get_unicast_dhcp_packet(src_mac: str, server_ip: str) -> Packet:
+        """
+        create the basic layers for a DHCP packet
+        :param src_mac: the source MAC address to send the packet with
+        :return: DHCP Packet with ethernet, IP and UDP layers
+        """
+        eth = Ether(src=src_mac)
+        ip = IP(dst=server_ip)
         udp = UDP(sport=68, dport=67)
 
         return eth / ip / udp
